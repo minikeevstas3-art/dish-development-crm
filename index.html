@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRM блюд в разработке</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Рабочая доска меню</p>
+          <h1>CRM блюд в разработке</h1>
+        </div>
+        <div class="topbar-actions" aria-label="Действия с данными">
+          <button class="ghost-button" type="button" id="exportButton">Экспорт</button>
+          <label class="ghost-button file-button" for="importFile">Импорт</label>
+          <input id="importFile" type="file" accept="application/json" />
+          <button class="ghost-button danger-text" type="button" id="resetButton">Сброс</button>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Сводка по блюдам">
+        <article class="metric">
+          <span class="metric-label">Всего</span>
+          <strong id="totalMetric">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Готово</span>
+          <strong id="readyMetric">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Зависли</span>
+          <strong id="blockedMetric">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Следующий у</span>
+          <strong id="nextStepMetric">-</strong>
+        </article>
+      </section>
+
+      <section class="toolbar" aria-label="Фильтры и добавление блюда">
+        <div class="filters">
+          <label>
+            Поиск
+            <input id="searchInput" type="search" placeholder="Название, проблема, шаг" />
+          </label>
+          <label>
+            Статус
+            <select id="statusFilter"></select>
+          </label>
+          <label>
+            Ответственный
+            <select id="ownerFilter">
+              <option value="all">Все</option>
+              <option value="Станислав">Станислав</option>
+              <option value="Эльдар">Эльдар</option>
+            </select>
+          </label>
+        </div>
+
+        <form class="add-form" id="dishForm">
+          <label>
+            Новое блюдо
+            <input id="dishNameInput" type="text" placeholder="Например: Блюдо 11" required />
+          </label>
+          <button class="primary-button" type="submit">Добавить</button>
+        </form>
+      </section>
+
+      <section class="viewbar" aria-label="Режим просмотра">
+        <div class="segmented-control" id="viewTabs" role="tablist" aria-label="Переключение вида">
+          <button class="segment-button is-active" type="button" role="tab" aria-selected="true" data-view="board">
+            Доска
+          </button>
+          <button class="segment-button" type="button" role="tab" aria-selected="false" data-view="list">
+            Список
+          </button>
+        </div>
+        <div class="quick-actions" aria-label="Быстрые действия">
+          <button class="ghost-button quick-filter-button" type="button" id="focusBlockedButton">
+            Показать зависшие
+          </button>
+          <button class="ghost-button quick-filter-button" type="button" id="focusReadyButton">
+            Показать готовые
+          </button>
+          <button class="ghost-button quick-filter-button" type="button" id="clearFiltersButton">
+            Сбросить фильтры
+          </button>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="Рабочая область CRM">
+        <section class="main-panel" aria-label="Основная рабочая область">
+          <section class="board-panel" id="boardPanel" aria-label="Доска по статусам">
+            <div class="list-heading">
+              <div>
+                <h2>Доска по статусам</h2>
+                <p class="subtle-text">Сразу видно, что готово, что зависло и что делать дальше.</p>
+              </div>
+              <span id="boardVisibleCount">0 карточек</span>
+            </div>
+            <div class="board-columns" id="boardColumns"></div>
+            <p class="empty-state is-hidden" id="boardEmptyState">
+              По этим фильтрам карточек нет. Сними фильтр или добавь новое блюдо.
+            </p>
+          </section>
+
+          <section class="dish-list-panel is-hidden" id="listPanel" aria-label="Список блюд">
+            <div class="list-heading">
+              <div>
+                <h2>Список блюд</h2>
+                <p class="subtle-text">Компактный режим для быстрого просмотра и поиска.</p>
+              </div>
+              <span id="visibleCount">0 показано</span>
+            </div>
+            <div class="dish-list" id="dishList"></div>
+            <p class="empty-state is-hidden" id="emptyState">
+              По этим фильтрам блюд нет. Сними фильтр или добавь новое блюдо.
+            </p>
+          </section>
+
+          <section class="flow-panel" aria-label="Что делать дальше">
+            <div class="section-heading">
+              <h2>Фокус на сегодня</h2>
+              <span id="todayFocusLabel">-</span>
+            </div>
+            <div class="focus-card" id="focusCard"></div>
+          </section>
+        </section>
+
+        <aside class="dish-card-panel" aria-label="Карточка выбранного блюда">
+          <section class="detail-summary" aria-label="Краткая сводка блюда">
+            <div class="detail-summary-row">
+              <span>Статус</span>
+              <strong id="detailSummaryStatus">-</strong>
+            </div>
+            <div class="detail-summary-row">
+              <span>Следующий шаг</span>
+              <strong id="detailSummaryNextStep">-</strong>
+            </div>
+            <div class="detail-summary-row">
+              <span>Проблема</span>
+              <strong id="detailSummaryBlocker">-</strong>
+            </div>
+          </section>
+
+          <div class="card-shortcuts" aria-label="Быстрые действия по карточке">
+            <button class="ghost-button" type="button" id="markReadyButton">Отметить готовым</button>
+            <button class="ghost-button" type="button" id="markTestingButton">Вернуть в проработку</button>
+          </div>
+
+          <form id="detailForm" class="detail-form">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Карточка блюда</p>
+                <input id="detailName" class="title-input" type="text" aria-label="Название блюда" />
+              </div>
+              <button class="icon-button" type="button" id="deleteDishButton" title="Удалить блюдо">
+                x
+              </button>
+            </div>
+
+            <div class="detail-grid">
+              <label>
+                Статус
+                <select id="detailStatus"></select>
+              </label>
+              <label>
+                Ответственный
+                <select id="detailOwner">
+                  <option value="Станислав">Станислав</option>
+                  <option value="Эльдар">Эльдар</option>
+                </select>
+              </label>
+              <label>
+                Срок шага
+                <input id="detailDueDate" type="date" />
+              </label>
+            </div>
+
+            <label>
+              Следующий шаг
+              <textarea id="detailNextStep" rows="3" required></textarea>
+            </label>
+
+            <label>
+              Что мешает
+              <textarea id="detailBlocker" rows="3"></textarea>
+            </label>
+
+            <label>
+              Последний результат / правки
+              <textarea id="detailNotes" rows="4"></textarea>
+            </label>
+
+            <button class="primary-button full-width" type="submit">Сохранить карточку</button>
+            <p class="save-status" id="saveStatus" role="status"></p>
+          </form>
+
+          <section class="comments-section" aria-label="Комментарии">
+            <div class="section-heading">
+              <h2>Комментарии</h2>
+              <span id="commentCount">0</span>
+            </div>
+
+            <form class="comment-form" id="commentForm">
+              <label>
+                Автор
+                <select id="commentAuthor">
+                  <option value="Станислав">Станислав</option>
+                  <option value="Эльдар">Эльдар</option>
+                </select>
+              </label>
+              <label>
+                Комментарий
+                <textarea
+                  id="commentText"
+                  rows="3"
+                  placeholder="Что изменилось, что попробовать, что не устроило"
+                  required
+                ></textarea>
+              </label>
+              <button class="ghost-button" type="submit">Оставить комментарий</button>
+            </form>
+
+            <div class="comment-list" id="commentList"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
